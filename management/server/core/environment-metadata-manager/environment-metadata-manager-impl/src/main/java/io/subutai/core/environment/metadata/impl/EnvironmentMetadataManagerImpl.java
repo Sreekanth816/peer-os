@@ -1,16 +1,16 @@
 package io.subutai.core.environment.metadata.impl;
 
 
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import java.util.concurrent.TimeUnit;
+
+import javax.jms.ConnectionFactory;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 
 import io.subutai.common.command.CommandException;
 import io.subutai.common.command.RequestBuilder;
@@ -24,7 +24,11 @@ import io.subutai.core.identity.api.IdentityManager;
 import io.subutai.core.identity.api.exception.TokenCreateException;
 import io.subutai.core.peer.api.PeerManager;
 import io.subutai.hub.share.Utils;
-import io.subutai.hub.share.dto.BrokerSettingsDto;
+import io.subutai.hub.share.broker.BrokerConnectionFactory;
+import io.subutai.hub.share.broker.BrokerSettings;
+import io.subutai.hub.share.broker.BrokerTransport;
+import io.subutai.hub.share.broker.InvalidTransportException;
+import io.subutai.hub.share.broker.TransportNotFoundException;
 import io.subutai.hub.share.dto.environment.EnvironmentInfoDto;
 import io.subutai.hub.share.event.Event;
 import io.subutai.hub.share.json.JsonUtil;
@@ -37,10 +41,12 @@ public class EnvironmentMetadataManagerImpl implements EnvironmentMetadataManage
 {
     private static final Logger LOG = LoggerFactory.getLogger( EnvironmentMetadataManagerImpl.class );
     private final IdentityManager identityManager;
+    private Cache<BrokerTransport.Type, BrokerTransport> brokerTransportRequests;
     private PeerManager peerManager;
     private EnvironmentManager environmentManager;
-    private BrokerSettings brokerSettings;
     private HubManager hubManager;
+    private BrokerConnectionFactory brokerConnectionFactory = new BrokerConnectionFactory( 1 );
+    private BrokerSettings brokerSettings = new BrokerSettings();
 
 
     public EnvironmentMetadataManagerImpl( PeerManager peerManager, EnvironmentManager environmentManager,
@@ -50,6 +56,7 @@ public class EnvironmentMetadataManagerImpl implements EnvironmentMetadataManage
         this.environmentManager = environmentManager;
         this.identityManager = identityManager;
         this.hubManager = hubManager;
+        this.brokerTransportRequests = CacheBuilder.newBuilder().expireAfterWrite( 1, TimeUnit.MINUTES ).build();
     }
 
 
@@ -106,53 +113,32 @@ public class EnvironmentMetadataManagerImpl implements EnvironmentMetadataManage
             LOG.debug( "Event received: {} {}", event, jsonEvent );
             LOG.debug( "OS: {}", event.getCustomMetaByKey( "OS" ) );
             String destination = "events." + event.getOrigin().getId();
-
-            checkBrokerSettings( false );
-            // TODO: 4/12/18 need to implement connections pool something like below;  while creating connection
-            // every time with random URI
-            //            ActiveMQConnectionFactory amq = new ActiveMQConnectionFactory(
-            //                    "vm://broker1?marshal=false&broker.persistent=false&broker.useJmx=false");
-            //            JmsPoolConnectionFactory cf = new JmsPoolConnectionFactory();
-            //            cf.setConnectionFactory(amq);
-            //            cf.setMaxConnections(3);
-            thread( new EventProducer( this.brokerSettings.getBroker(), destination, jsonEvent ), true );
+            ConnectionFactory cf = getConnectionFactory( BrokerTransport.Type.TCP );
+            thread( new EventProducer( cf, destination, jsonEvent ), true );
         }
-        catch ( JsonProcessingException | URISyntaxException | BrokerSettingException e )
+        catch ( JsonProcessingException | TransportNotFoundException | InvalidTransportException e )
         {
             LOG.error( e.getMessage(), e );
         }
     }
 
 
-    private void checkBrokerSettings( boolean retrieve ) throws BrokerSettingException
+    private ConnectionFactory getConnectionFactory( BrokerTransport.Type type )
+            throws TransportNotFoundException, InvalidTransportException
     {
-        if ( !( brokerSettings == null || retrieve ) )
+        // trying to get the previous connection factory
+        ConnectionFactory cf = brokerConnectionFactory.getConnectionFactory( type );
+        if ( cf == null )
         {
-            return;
-        }
-
-        try
-        {
-            final BrokerSettingsDto response = hubManager.getBrokers();
-            if ( response == null )
+            // seems it is first time to obtain connection factory
+            BrokerTransport transport = requestBrokerTransport( type );
+            if ( transport == null )
             {
-                throw new BrokerSettingException( "Could not retrieve broker settings." );
+                throw new TransportNotFoundException( "Transport not found for type: " + type );
             }
-            List<URI> list = new ArrayList<>();
-            for ( String s : response.getBrokers() )
-            {
-                list.add( new URI( s ) );
-            }
-            if ( list.size() == 0 )
-            {
-                throw new BrokerSettingException( "Broker URI list is empty." );
-            }
-            this.brokerSettings = new BrokerSettings( list );
+            cf = brokerConnectionFactory.getConnectionFactory( transport );
         }
-        catch ( URISyntaxException e )
-        {
-            throw new BrokerSettingException( e );
-        }
+        return cf;
     }
 
 
@@ -171,21 +157,15 @@ public class EnvironmentMetadataManagerImpl implements EnvironmentMetadataManage
     }
 
 
-    private class BrokerSettings
+    private BrokerTransport requestBrokerTransport( final BrokerTransport.Type type )
     {
-        List<URI> uriList;
+        BrokerTransport transport = this.brokerTransportRequests.getIfPresent( type );
 
-
-        public BrokerSettings( final List<URI> uriList )
+        if ( transport == null )
         {
-            this.uriList = uriList;
+            transport = hubManager.getBrokerTransport( type );
         }
-
-
-        public URI getBroker()
-        {
-            return uriList.get( new Random().nextInt( uriList.size() ) );
-        }
+        return transport;
     }
 }
 

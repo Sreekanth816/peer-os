@@ -75,8 +75,8 @@ import io.subutai.core.metric.api.Monitor;
 import io.subutai.core.peer.api.PeerManager;
 import io.subutai.core.security.api.SecurityManager;
 import io.subutai.core.systemmanager.api.SystemManager;
+import io.subutai.hub.share.broker.BrokerTransport;
 import io.subutai.hub.share.common.HubEventListener;
-import io.subutai.hub.share.dto.BrokerSettingsDto;
 import io.subutai.hub.share.dto.PeerDto;
 import io.subutai.hub.share.dto.PeerProductDataDto;
 import io.subutai.hub.share.dto.UserDto;
@@ -811,12 +811,13 @@ public class HubManagerImpl extends HostListener implements HubManager
 
 
     @Override
-    public BrokerSettingsDto getBrokers()
+    public BrokerTransport getBrokerTransport( BrokerTransport.Type type )
     {
         final HubRestClient client = new HubRestClient( configManager );
 
-        final RestResult<BrokerSettingsDto> response =
-                client.get( "/rest/v1/brokers/" + localPeer.getId(), BrokerSettingsDto.class );
+        final RestResult<BrokerTransport> response =
+                client.get( String.format( "/rest/v1/broker/transport/%s/%s", type, localPeer.getId() ),
+                        BrokerTransport.class );
 
         return response.getEntity();
     }

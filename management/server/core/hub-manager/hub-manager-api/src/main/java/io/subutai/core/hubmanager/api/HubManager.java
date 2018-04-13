@@ -5,7 +5,8 @@ import java.util.Map;
 
 import io.subutai.core.hubmanager.api.exception.HubManagerException;
 import io.subutai.core.hubmanager.api.model.Config;
-import io.subutai.hub.share.dto.BrokerSettingsDto;
+import io.subutai.hub.share.broker.BrokerSettings;
+import io.subutai.hub.share.broker.BrokerTransport;
 
 
 public interface HubManager
@@ -52,5 +53,5 @@ public interface HubManager
 
     void notifyHubThatPeerIsOffline();
 
-    BrokerSettingsDto getBrokers();
+    BrokerTransport getBrokerTransport(BrokerTransport.Type type);
 }

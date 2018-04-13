@@ -1,10 +1,8 @@
 package io.subutai.core.environment.metadata.impl;
 
 
-import java.net.URI;
-import java.net.URISyntaxException;
-
 import javax.jms.Connection;
+import javax.jms.ConnectionFactory;
 import javax.jms.DeliveryMode;
 import javax.jms.Destination;
 import javax.jms.JMSException;
@@ -15,8 +13,6 @@ import javax.jms.TextMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.activemq.ActiveMQConnectionFactory;
-
 
 public class EventProducer implements Runnable
 {
@@ -24,17 +20,14 @@ public class EventProducer implements Runnable
     private final String destination;
     private String message;
 
-    private URI uri;
-    private ActiveMQConnectionFactory connectionFactory;
+    private ConnectionFactory connectionFactory;
 
 
-    public EventProducer( final URI uri, final String destination, final String message ) throws URISyntaxException
+    public EventProducer( final ConnectionFactory connectionFactory, final String destination, final String message )
     {
-        this.uri = uri;
         this.destination = destination;
         this.message = message;
-        // Create a ConnectionFactory
-        connectionFactory = new ActiveMQConnectionFactory( uri );
+        this.connectionFactory = connectionFactory;
     }
 
 
