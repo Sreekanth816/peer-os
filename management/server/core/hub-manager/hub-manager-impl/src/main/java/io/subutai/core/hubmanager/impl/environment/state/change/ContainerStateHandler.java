@@ -1,7 +1,11 @@
 package io.subutai.core.hubmanager.impl.environment.state.change;
 
 
+import java.util.HashMap;
+import java.util.Map;
+
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 
 import io.subutai.common.environment.Environment;
 import io.subutai.common.peer.ContainerId;
@@ -20,6 +24,7 @@ import io.subutai.hub.share.dto.environment.EnvironmentDto;
 import io.subutai.hub.share.dto.environment.EnvironmentNodeDto;
 import io.subutai.hub.share.dto.environment.EnvironmentNodesDto;
 import io.subutai.hub.share.dto.environment.EnvironmentPeerDto;
+import io.subutai.hub.share.quota.ContainerQuota;
 
 
 // todo refactor
@@ -85,6 +90,12 @@ public class ContainerStateHandler extends StateHandler
 
 
                             nodeDto.setState( ContainerStateDto.FROZEN );
+                        }
+                        else if ( nodeDto.getState().equals( ContainerStateDto.MODIFYING ) )
+                        {
+                            final Environment environment = ctx.envManager.getEnvironment( envId.getId() );
+                            final EnvironmentContainerHost containerHost = environment.getContainerHostById( nodeDto.getContainerId() );
+                            containerHost.setQuota( nodeDto.getContainerQuota() );
                         }
                     }
                 }
