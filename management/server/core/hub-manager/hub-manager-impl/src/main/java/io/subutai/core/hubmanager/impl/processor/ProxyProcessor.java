@@ -99,7 +99,7 @@ public class ProxyProcessor implements StateLinkProcessor
                     deleteP2pNetworkInterface( proxyDto );
                     break;
                 default:
-                    log.error( "Wrong state come from HUB: {}", proxyDto );
+                    log.error( "Wrong state come from Subutai Bazaar: {}", proxyDto );
                     break;
             }
 
@@ -349,7 +349,7 @@ public class ProxyProcessor implements StateLinkProcessor
         }
         else
         {
-            log.info( "Sent Data to HUB Success" );
+            log.info( "Sent Data to Subutai Bazaar success" );
         }
     }
 }

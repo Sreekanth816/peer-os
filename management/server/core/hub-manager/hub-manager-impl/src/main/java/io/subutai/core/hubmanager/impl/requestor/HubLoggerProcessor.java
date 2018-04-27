@@ -52,23 +52,23 @@ public class HubLoggerProcessor extends HubRequester
 
                 logsDto.setSubutaiSystemLogs( toSubutaiSystemLogs( subutaiErrorEvents ) );
 
-                log.debug( "Sending System logs to HUB:" );
+                log.debug( "Sending System logs to Subutai Bazaar:" );
 
                 RestResult<Object> restResult = restClient.post( "/rest/v1/system-bugs", logsDto );
 
                 if ( restResult.getStatus() != HttpStatus.SC_NO_CONTENT )
                 {
-                    log.warn( "Could not send logs to Hub {}", restResult.getError() );
+                    log.warn( "Could not send logs to Subutai Bazaar {}", restResult.getError() );
                 }
                 else
                 {
 
-                    log.debug( "System logs sent to HUB successfully." );
+                    log.debug( "System logs sent to Subutai Bazaar successfully." );
                 }
             }
             catch ( Exception e )
             {
-                log.warn( "Could not send logs to Hub {}", e.getMessage() );
+                log.warn( "Could not send logs to Subutai Bazaar {}", e.getMessage() );
             }
         }
     }
